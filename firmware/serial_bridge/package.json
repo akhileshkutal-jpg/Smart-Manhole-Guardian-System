@@ -1,0 +1,12 @@
+{
+  "name": "manhole-serial-bridge",
+  "version": "1.0.0",
+  "description": "USB Serial bridge forwarding Arduino Uno JSON telemetry to Express backend",
+  "main": "serial_bridge.js",
+  "scripts": {
+    "start": "node serial_bridge.js"
+  },
+  "dependencies": {
+    "serialport": "^12.0.0"
+  }
+}

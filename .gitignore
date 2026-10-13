@@ -1,0 +1,66 @@
+# =========================================================================
+# Smart Manhole Guardian System - .gitignore
+# =========================================================================
+
+# 1. Environment & Sensitive Credentials (DO NOT COMMIT SECRETS)
+.env
+.env.*
+*.env
+# Ensure the template/example file is committed so others know what variables are needed:
+!.env.example
+
+# Hardware / Wi-Fi secrets (if created locally for ESP8266 / Arduino)
+secrets.h
+config.local.h
+credentials.h
+*.pem
+*.key
+*.cert
+
+# 2. Dependency Directories (Too heavy for Git; reinstall via 'npm install')
+node_modules/
+jspm_packages/
+
+# 3. Logs & Diagnostics
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 4. Deployment & Build Outputs
+.vercel/
+dist/
+build/
+out/
+.cache/
+
+# 5. Firmware Build Artifacts (PlatformIO / Arduino compilation files)
+.pio/
+.pioenvs/
+.piolibdeps/
+arduino_build_*/
+arduino_cache_*/
+*.hex
+*.elf
+*.bin
+
+# 6. Operating System Files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# 7. IDE & Editor Specific Folders
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~

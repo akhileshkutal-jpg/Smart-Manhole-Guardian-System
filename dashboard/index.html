@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Manhole Guardian System - Real-Time IoT Dashboard</title>
+  
+  <!-- Leaflet CSS for Interactive GIS Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Global Critical Hazard Banner -->
+  <div id="dangerBanner" class="danger-banner hidden">
+    <div class="danger-banner-content">
+      <span class="danger-pulse-icon">🚨</span>
+      <div class="danger-banner-text">
+        <strong id="dangerBannerTitle">CRITICAL HAZARD DETECTED</strong>
+        <span id="dangerBannerDesc">Immediate inspection required. Local buzzer & alarms active.</span>
+      </div>
+      <button id="dangerBannerDismiss" class="btn-sm btn-ghost">Dismiss Visual</button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-box">
+        <div class="logo-icon">🛡️</div>
+        <div>
+          <h1 class="logo-title">Smart Manhole Guardian</h1>
+          <p class="logo-subtitle">Real-Time Municipal Sewer & Worker Safety Monitoring</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-stats">
+      <div class="stat-pill status-danger-pill" id="statDangerCount">
+        <span class="pill-dot red-dot"></span> <span id="countDanger">0</span> Critical
+      </div>
+      <div class="stat-pill status-warning-pill" id="statWarningCount">
+        <span class="pill-dot yellow-dot"></span> <span id="countWarning">0</span> Warning
+      </div>
+      <div class="stat-pill status-safe-pill" id="statSafeCount">
+        <span class="pill-dot green-dot"></span> <span id="countSafe">0</span> Safe
+      </div>
+      <div class="stat-pill status-offline-pill" id="statOfflineCount">
+        <span class="pill-dot grey-dot"></span> <span id="countOffline">0</span> Offline
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Audio Toggle -->
+      <button id="audioToggleBtn" class="btn btn-secondary" title="Toggle Hazard Siren">
+        <span id="audioIcon">🔊</span> <span id="audioLabel">Sound ON</span>
+      </button>
+
+      <!-- CSV Export -->
+      <a href="/api/alerts/export" id="exportCsvBtn" class="btn btn-outline" download>
+        <span>📥</span> Export CSV
+      </a>
+
+      <!-- Server Connection Badge -->
+      <div class="connection-status" id="connectionBadge">
+        <span class="live-indicator"></span>
+        <span id="connectionText">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <div class="main-container">
+    <!-- Sidebar: Manholes List Sorted by Severity -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Monitored Nodes (<span id="totalDeviceCount">0</span>)</h2>
+        <span class="sort-badge">Sorted by Severity</span>
+      </div>
+
+      <div class="device-list" id="deviceListContainer">
+        <!-- Dynamically injected device items -->
+        <div class="loading-state">Loading manhole nodes...</div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="offline-info-note">
+          <span class="info-icon">ℹ️</span> Offline detection active (&gt;30s timeout)
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+      <!-- Top Row: Interactive Map & Selected Node Focus -->
+      <div class="top-row-grid">
+        <!-- Leaflet Map Card -->
+        <div class="card map-card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Geographical Sensor Network</h3>
+              <p class="card-subtitle">Click marker or select sidebar node to view real-time chamber diagnostics</p>
+            </div>
+            <div class="map-legend">
+              <span class="legend-item"><span class="legend-dot green"></span> Safe</span>
+              <span class="legend-item"><span class="legend-dot yellow"></span> Warning</span>
+              <span class="legend-item"><span class="legend-dot red pulsing"></span> Danger</span>
+              <span class="legend-item"><span class="legend-dot grey"></span> Offline</span>
+            </div>
+          </div>
+          <div class="card-body map-body">
+            <div id="map"></div>
+          </div>
+        </div>
+
+        <!-- Selected Node Diagnostics Card -->
+        <div class="card diagnostics-card" id="diagnosticsPanel">
+          <div class="card-header">
+            <div>
+              <span class="device-tag" id="selectedDeviceId">MH-101</span>
+              <h3 class="card-title" id="selectedDeviceName">Connaught Place Radial 1</h3>
+              <p class="card-subtitle mono" id="selectedDeviceCoords">Lat: 28.6328 | Lng: 77.2197</p>
+            </div>
+            <div class="device-status-badge status-safe" id="selectedStatusBadge">
+              SAFE
+            </div>
+          </div>
+
+          <div class="card-body">
+            <!-- Status Reason Banner -->
+            <div class="status-reason-banner safe-reason" id="statusReasonBanner">
+              <span id="statusReasonIcon">✅</span>
+              <span id="statusReasonText">Normal operating atmosphere. Safe for personnel.</span>
+            </div>
+
+            <!-- Key Sensor Metric Cards -->
+            <div class="metrics-grid">
+              <!-- Gas Metric -->
+              <div class="metric-card" id="gasMetricCard">
+                <div class="metric-header">
+                  <span class="metric-title">Toxic Gas (MQ-135)</span>
+                  <span class="metric-icon">🧪</span>
+                </div>
+                <div class="metric-value-box">
+                  <span class="metric-value" id="valGas">160</span>
+                  <span class="metric-unit">ppm</span>
+                </div>
+                <div class="progress-bar-container">
+                  <div class="progress-bar" id="gasProgressBar" style="width: 25%;"></div>
+                </div>
+                <div class="metric-footer">
+                  <span>Warn: &gt;300</span>
+                  <span>Crit: &gt;550 ppm</span>
+                </div>
+              </div>
+
+              <!-- Water Level Metric -->
+              <div class="metric-card" id="waterMetricCard">
+                <div class="metric-header">
+                  <span class="metric-title">Water Level (HC-SR04)</span>
+                  <span class="metric-icon">🌊</span>
+                </div>
+                <div class="metric-value-box">
+                  <span class="metric-value" id="valWater">22</span>
+                  <span class="metric-unit">cm</span>
+                </div>
+                <div class="progress-bar-container">
+                  <div class="progress-bar water-bar" id="waterProgressBar" style="width: 22%;"></div>
+                </div>
+                <div class="metric-footer">
+                  <span>Warn: &gt;50</span>
+                  <span>Flood: &gt;80 cm</span>
+                </div>
+              </div>
+
+              <!-- Lid Tamper Metric -->
+              <div class="metric-card" id="lidMetricCard">
+                <div class="metric-header">
+                  <span class="metric-title">Lid Tamper Switch</span>
+                  <span class="metric-icon" id="lidIcon">🔒</span>
+                </div>
+                <div class="metric-value-box">
+                  <span class="metric-status-text safe" id="valLid">CLOSED</span>
+                </div>
+                <div class="lid-status-bar closed" id="lidStatusBar"></div>
+                <div class="metric-footer">
+                  <span>Reed Switch / Limit</span>
+                  <span id="lidSafetyTag">Secure</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hardware Telemetry Heartbeat Info -->
+            <div class="telemetry-meta">
+              <div class="meta-item">
+                <span class="meta-label">Local Alarm State:</span>
+                <span class="meta-val" id="localAlarmState">Green LED Normal</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Last Transmission:</span>
+                <span class="meta-val mono" id="lastSeenText">Just now</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-Time Telemetry Line Chart -->
+      <div class="card chart-card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Real-Time Sensor Telemetry Trends</h3>
+            <p class="card-subtitle">Continuous live stream of Toxic Gas (ppm) and Water Level (cm) for <span id="chartNodeLabel">MH-101</span></p>
+          </div>
+          <div class="chart-controls">
+            <span class="badge-tag">Auto-updating (every 2s)</span>
+          </div>
+        </div>
+        <div class="card-body chart-body">
+          <canvas id="telemetryChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Incident & Alert Log with Acknowledgement -->
+      <div class="card table-card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Safety Incident & Alert Log</h3>
+            <p class="card-subtitle">Real-time municipal audit log. Sanitation supervisors can acknowledge actions directly.</p>
+          </div>
+          <div>
+            <a href="/api/alerts/export" class="btn btn-sm btn-outline">
+              📥 Download CSV
+            </a>
+          </div>
+        </div>
+        <div class="card-body table-body">
+          <div class="table-responsive">
+            <table class="alert-table" id="alertsTable">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Manhole ID & Location</th>
+                  <th>Severity</th>
+                  <th>Hazard Description</th>
+                  <th>Telemetry Snapshot</th>
+                  <th>Resolution / Action</th>
+                </tr>
+              </thead>
+              <tbody id="alertsTableBody">
+                <tr>
+                  <td colspan="6" class="text-center text-muted">No hazard incidents recorded yet. All systems nominal.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Acknowledge Modal -->
+  <div id="ackModal" class="modal hidden">
+    <div class="modal-backdrop" id="ackModalBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Acknowledge Hazard Incident</h3>
+        <button id="modalCloseBtn" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="modalAlertSummary" class="modal-summary">Confirm notification and action dispatched for this hazard.</p>
+        <div class="form-group">
+          <label for="ackNoteInput">Supervisor Action / Log Note:</label>
+          <input type="text" id="ackNoteInput" class="form-control" value="Worker team notified; ventilation exhaust blower dispatched." placeholder="Enter supervisor response note...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="modalCancelBtn" class="btn btn-secondary">Cancel</button>
+        <button id="modalSubmitBtn" class="btn btn-primary">Confirm & Acknowledge</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vendor Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Application Logic -->
+  <script src="js/map.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

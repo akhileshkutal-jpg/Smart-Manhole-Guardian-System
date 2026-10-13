@@ -1,0 +1,29 @@
+{
+  "name": "smart-manhole-guardian-system",
+  "version": "1.0.0",
+  "description": "IoT-based Smart Manhole Guardian System with real-time toxic gas, water level, and tamper monitoring, Leaflet map, Telegram alerts, and viva demo mode",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "simulate": "node backend/server.js --simulate",
+    "dev": "node backend/server.js --simulate"
+  },
+  "keywords": [
+    "iot",
+    "arduino",
+    "esp8266",
+    "sensors",
+    "manhole-safety",
+    "sanitation-workers",
+    "telegram-bot",
+    "leaflet"
+  ],
+  "author": "Smart Manhole Guardian Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
